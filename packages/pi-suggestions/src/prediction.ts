@@ -127,7 +127,8 @@ export class Predictions {
 						? {}
 						: { reasoning }),
 					maxTokens: 1024,
-					cacheRetention: "short",
+					// One-off side request, like Pi's summaries; subscription bridges reject other values.
+					cacheRetention: "none",
 					sessionId: session.id,
 				},
 			)
