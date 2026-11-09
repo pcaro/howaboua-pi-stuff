@@ -16,7 +16,7 @@ Open `/suggestions`, choose a model and switch suggestions on. They start off, w
 
 Suggestions use the selected model's quota and may incur API charges. They send that provider bounded excerpts of user messages and completed assistant responses, including a compaction summary when available. Tool results, images and the main chat's hidden reasoning are excluded.
 
-Predictions keep a separate, in-memory conversation without tools. Later requests append new conversation turns and reuse its cache where the provider supports it. Cache hits are not guaranteed. This private history never enters your chat and is discarded on a new Notes context window, Pi compaction, session navigation, model changes, switching suggestions off or shutdown.
+Predictions keep a separate, in-memory conversation without tools. Later requests append new conversation turns. Requests opt out of prompt caching, like Pi's own summaries, so subscription bridges such as `pi-claude-bridge` accept them. This private history never enters your chat and is discarded on a new Notes context window, Pi compaction, session navigation, model changes, switching suggestions off or shutdown.
 
 Suggestions run only in interactive terminal sessions. Shepherdr-launched workers and Pi's RPC and print modes do not request them. Update Shepherdr alongside Suggestions to identify workers reliably.
 
