@@ -30,14 +30,15 @@ type SummaryThinking =
 
 export interface SummaryModelConfig {
 	enabled: boolean;
-	model: string;
+	/** Ordered `provider/id` refs; the session model follows the last one. */
+	models: string[];
 	thinking: SummaryThinking;
 }
 
 interface AutoTreesConfig {
 	summary?: {
 		enabled?: boolean;
-		model?: string;
+		model?: string | string[];
 		thinking?: SummaryThinking;
 	};
 }
@@ -71,10 +72,10 @@ export function readSummaryConfig(): SummaryModelConfig {
 	}
 
 	const configured = parsed.summary;
-	const model =
-		typeof configured?.model === "string" && configured.model.trim()
-			? configured.model.trim()
-			: DEFAULT_SUMMARY_CONFIG.model;
+	const models = [configured?.model ?? []]
+		.flat()
+		.filter((ref): ref is string => typeof ref === "string" && !!ref.trim())
+		.map((ref) => ref.trim());
 	const thinking =
 		configured?.thinking && ALLOWED_THINKING.has(configured.thinking)
 			? configured.thinking
@@ -85,7 +86,7 @@ export function readSummaryConfig(): SummaryModelConfig {
 			typeof configured?.enabled === "boolean"
 				? configured.enabled
 				: DEFAULT_SUMMARY_CONFIG.enabled,
-		model,
+		models: models.length ? models : [DEFAULT_SUMMARY_CONFIG.model],
 		thinking,
 	};
 }

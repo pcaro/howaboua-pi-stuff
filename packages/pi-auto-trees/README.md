@@ -53,7 +53,7 @@ On first load, the extension creates `~/.pi/agent/pi-auto-trees.json`, or the eq
 }
 ```
 
-`/end` uses the configured lightweight model for ordinary branch summaries, not managed notes handoffs. If that model or its credentials are unavailable, the extension reports the fallback and uses Pi's current session model.
+`/end` uses the configured lightweight model for ordinary branch summaries, not managed notes handoffs. `model` also accepts an ordered list, such as `["openai-codex/gpt-6-luna", "anthropic/claude-haiku-5-5"]`; unavailable entries are skipped and a failed request moves to the next one. If no listed model works, the extension reports the fallback and uses Pi's current session model.
 
 ## Local development
 

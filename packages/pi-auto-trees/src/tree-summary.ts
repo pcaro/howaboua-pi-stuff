@@ -52,82 +52,77 @@ export function registerTreeSummaryModel(
 		)
 			return;
 
-		const parsed = splitModelRef(request.config.model);
-		const model = parsed
-			? ctx.modelRegistry.find(parsed.provider, parsed.modelId)
-			: undefined;
-		if (!model) {
-			ctx.ui.notify(
-				`Configured summary model ${request.config.model} unavailable; falling back to the current session model.`,
-				"warning",
-			);
-			return;
-		}
+		// Unavailable refs are skipped quietly; one notice covers the session-model fallback.
+		const failures: string[] = [];
+		for (const ref of request.config.models) {
+			const parsed = splitModelRef(ref);
+			const model = parsed
+				? ctx.modelRegistry.find(parsed.provider, parsed.modelId)
+				: undefined;
+			if (!model) continue;
+			const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
+			const provider = ctx.modelRegistry.getProvider(model.provider);
+			if (!auth.ok || !provider) continue;
+			const summaryModel = auth.baseUrl
+				? { ...model, baseUrl: auth.baseUrl }
+				: model;
 
-		const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
-		const provider = ctx.modelRegistry.getProvider(model.provider);
-		if (!auth.ok || !provider) {
-			ctx.ui.notify(
-				`Configured summary model ${request.config.model} unavailable; falling back to the current session model.`,
-				"warning",
-			);
-			return;
-		}
-		const summaryModel = auth.baseUrl
-			? { ...model, baseUrl: auth.baseUrl }
-			: model;
-
-		try {
-			const result = await generateBranchSummary(
-				event.preparation.entriesToSummarize,
-				{
-					model: summaryModel,
-					signal: event.signal,
-					...(event.preparation.customInstructions !== undefined
-						? { customInstructions: event.preparation.customInstructions }
-						: {}),
-					...(event.preparation.replaceInstructions !== undefined
-						? { replaceInstructions: event.preparation.replaceInstructions }
-						: {}),
-					streamFn: (streamModel, context, options) =>
-						provider.streamSimple(streamModel, context, {
-							...options,
-							...(auth.apiKey !== undefined ? { apiKey: auth.apiKey } : {}),
-							...(auth.headers !== undefined ? { headers: auth.headers } : {}),
-							...(auth.env !== undefined ? { env: auth.env } : {}),
-							...(streamModel.reasoning && request.config.thinking !== "off"
-								? { reasoning: request.config.thinking }
-								: {}),
-						}),
-				},
-			);
-
-			if (result.aborted) return { cancel: true as const };
-			if (result.error || !result.summary) {
-				ctx.ui.notify(
-					`Configured summary model failed${result.error ? `: ${result.error}` : ""}; falling back to the current session model.`,
-					"warning",
-				);
-				return;
-			}
-
-			return {
-				summary: {
-					summary: result.summary,
-					details: {
-						readFiles: result.readFiles ?? [],
-						modifiedFiles: result.modifiedFiles ?? [],
+			try {
+				const result = await generateBranchSummary(
+					event.preparation.entriesToSummarize,
+					{
+						model: summaryModel,
+						signal: event.signal,
+						...(event.preparation.customInstructions !== undefined
+							? { customInstructions: event.preparation.customInstructions }
+							: {}),
+						...(event.preparation.replaceInstructions !== undefined
+							? { replaceInstructions: event.preparation.replaceInstructions }
+							: {}),
+						streamFn: (streamModel, context, options) =>
+							provider.streamSimple(streamModel, context, {
+								...options,
+								...(auth.apiKey !== undefined ? { apiKey: auth.apiKey } : {}),
+								...(auth.headers !== undefined
+									? { headers: auth.headers }
+									: {}),
+								...(auth.env !== undefined ? { env: auth.env } : {}),
+								...(streamModel.reasoning && request.config.thinking !== "off"
+									? { reasoning: request.config.thinking }
+									: {}),
+							}),
 					},
-					...(result.usage !== undefined ? { usage: result.usage } : {}),
-				},
-			};
-		} catch (error) {
-			if (event.signal.aborted) return { cancel: true as const };
-			ctx.ui.notify(
-				`Configured summary model failed: ${error instanceof Error ? error.message : String(error)}; falling back to the current session model.`,
-				"warning",
-			);
+				);
+
+				if (result.aborted) return { cancel: true as const };
+				if (result.error || !result.summary) {
+					failures.push(`${ref}${result.error ? `: ${result.error}` : ""}`);
+					continue;
+				}
+
+				return {
+					summary: {
+						summary: result.summary,
+						details: {
+							readFiles: result.readFiles ?? [],
+							modifiedFiles: result.modifiedFiles ?? [],
+						},
+						...(result.usage !== undefined ? { usage: result.usage } : {}),
+					},
+				};
+			} catch (error) {
+				if (event.signal.aborted) return { cancel: true as const };
+				failures.push(
+					`${ref}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
 		}
+		ctx.ui.notify(
+			failures.length
+				? `Configured summary models failed (${failures.join("; ")}); falling back to the current session model.`
+				: `Configured summary models ${request.config.models.join(", ")} unavailable; falling back to the current session model.`,
+			"warning",
+		);
 	});
 
 	return async (ctx, targetId, options, config) => {
