@@ -165,7 +165,7 @@ class SuggestionEditor implements EditorComponent, Focusable {
 		const prediction = this.state.prediction;
 		if (!prediction || !this.canShow()) return lines;
 		// Unknown layouts and menus are left untouched. A marker alone is not
-		// enough: require the standard empty row between two editor borders.
+		// enough: require the standard editor row between two borders.
 		if (lines.length !== 3) return lines;
 		const row = lines[1];
 		if (row === undefined) return lines;
@@ -175,9 +175,12 @@ class SuggestionEditor implements EditorComponent, Focusable {
 		const before = row.slice(0, marker);
 		const after = row.slice(marker + CURSOR_MARKER.length);
 		const cursor = renderFakeCursor(" ");
+		// Composing editors may decorate the row ahead of the cursor; powerline
+		// draws its prompt glyph there. canShow() already requires an empty
+		// draft, so a short visible prefix is chrome, not draft text.
 		if (
 			!after.startsWith(cursor) ||
-			!/^[ ]*$/.test(stripTerminalSequences(before)) ||
+			visibleWidth(stripTerminalSequences(before)) > 8 ||
 			!/^[ ]*$/.test(stripTerminalSequences(after)) ||
 			visibleWidth(row) !== width
 		)
