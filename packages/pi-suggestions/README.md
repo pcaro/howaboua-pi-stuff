@@ -31,6 +31,24 @@ Input, navigation, new responses and blocking dialogs cancel pending suggestions
 
 Suggestions require the standard empty editor layout. Custom editors with a different layout remain usable but may not display suggestions. Settings are stored in `suggestions/config.json` under Pi's agent directory.
 
+## Fallback models
+
+If the chosen model is unavailable or its request fails, suggestions try each `provider/id` in the optional `fallbackModels` list, then the current session model. Add the list to `suggestions/config.json` directly; `/suggestions` keeps it when you change other settings. This lets one settings file work on machines with different providers:
+
+```json
+{
+	"enabled": true,
+	"model": {
+		"provider": "opencode-go",
+		"id": "glm-5.3-flash",
+		"reasoning": "low"
+	},
+	"fallbackModels": ["anthropic/claude-haiku-5-5"]
+}
+```
+
+The chosen reasoning level applies to fallbacks that support it. Switching models starts a new private prediction history.
+
 ## Customise suggestions
 
 Open `/suggestions` and choose **Instructions** to edit the Markdown guidance. You can also edit `suggestions/instructions.md` under Pi's agent directory directly. Changes apply to the next prediction and reset its private history. They do not change the main chat's prompt.

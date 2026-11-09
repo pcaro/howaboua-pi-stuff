@@ -183,7 +183,7 @@ export async function showSettings(
 						model =
 							reasoning === undefined ? undefined : { ...model, reasoning };
 					}
-					if (model) next = { enabled: true, model };
+					if (model) next = { ...config, enabled: true, model };
 				}
 			} else if (selection === "Instructions") {
 				const instructions = await ui.editor(

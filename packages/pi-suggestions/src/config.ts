@@ -13,6 +13,8 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 export interface SuggestionConfig {
 	enabled: boolean;
 	model?: { provider: string; id: string; reasoning: ModelThinkingLevel };
+	/** Ordered `provider/id` refs tried after `model`, before the session model. */
+	fallbackModels?: string[];
 }
 
 const reasoningLevels = [
@@ -32,13 +34,30 @@ function validateConfig(value: unknown): SuggestionConfig {
 	if (!("enabled" in value) || typeof value.enabled !== "boolean") {
 		throw new Error('"enabled" must be true or false.');
 	}
-	if (Object.keys(value).some((key) => key !== "enabled" && key !== "model")) {
+	if (
+		Object.keys(value).some(
+			(key) => !["enabled", "model", "fallbackModels"].includes(key),
+		)
+	) {
 		throw new Error("Unknown settings field.");
 	}
+	let fallbackModels: string[] | undefined;
+	if ("fallbackModels" in value) {
+		const refs = value.fallbackModels;
+		if (
+			!Array.isArray(refs) ||
+			refs.some(
+				(ref) => typeof ref !== "string" || !/^[^/\s]+\/\S+$/u.test(ref.trim()),
+			)
+		)
+			throw new Error('"fallbackModels" must list "provider/id" strings.');
+		fallbackModels = refs.map((ref: string) => ref.trim());
+	}
+	const fallbacks = fallbackModels ? { fallbackModels } : {};
 	if (!("model" in value)) {
 		if (value.enabled)
 			throw new Error("Enabled suggestions require a chosen model.");
-		return { enabled: false };
+		return { enabled: false, ...fallbacks };
 	}
 	const model = value.model;
 	if (typeof model !== "object" || model === null || Array.isArray(model)) {
@@ -70,6 +89,7 @@ function validateConfig(value: unknown): SuggestionConfig {
 	return {
 		enabled: value.enabled,
 		model: { provider: model.provider, id: model.id, reasoning },
+		...fallbacks,
 	};
 }
 

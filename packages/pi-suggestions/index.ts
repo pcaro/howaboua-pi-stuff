@@ -128,6 +128,7 @@ export default function suggestions(pi: ExtensionAPI): void {
 		predictions.sync(conversationSnapshot(pi, ctx));
 		if (event.aborted || !config.enabled || !config.model || !editor) return;
 		const selection = config.model;
+		const fallbackModels = config.fallbackModels ?? [];
 		const epoch = generation;
 		const sessionId = ctx.sessionManager.getSessionId();
 		const leaf = ctx.sessionManager.getLeafId();
@@ -162,6 +163,7 @@ export default function suggestions(pi: ExtensionAPI): void {
 				const result = await predictions.predict(
 					ctx,
 					selection,
+					fallbackModels,
 					context,
 					signal,
 				);
